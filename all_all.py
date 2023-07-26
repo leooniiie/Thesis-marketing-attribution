@@ -9,7 +9,7 @@ import tensorflow as tf
 
 def prep_df(df, max_journ_len):  # function that does the preprocessing
     # Transform the transaction column s.t. only  last tp before conversion has transaction == 1
-    df['time_diff'] = df['timestamp_conversion'] - df['timestamp']  # create new var for timedifference
+    df['time_diff'] = df['timestamp_conversion'] - df['timestamp']  # create new var for time difference
 
     df.drop(df[df.time_diff < 0].index, inplace=True)  # remove these time_diff < 0 i.e. tp after transaction
 
@@ -17,7 +17,7 @@ def prep_df(df, max_journ_len):  # function that does the preprocessing
     df = df.sort_values('journey_id')
 
     groups = df.groupby('journey_id').time_diff
-    min_val = groups.transform(min)  # search minimal time_diff in each group <=> closest tp to conversion
+    min_val = groups.transform(min)  # search minimal time_diff in each group <=> the closest tp to conversion
     cond1 = df.time_diff == min_val  # define condition when transaction should be 1
 
     df['transaction'] = np.select([cond1], [1], default=0)  # transform transaction
@@ -40,26 +40,29 @@ def prep_df(df, max_journ_len):  # function that does the preprocessing
 # Next step: transform to tensor:
 
 
-def mta2tensor(df):  # function that transforms dataset to tensor
+def mta2tensor(df):
     df_transaction = df['transaction']
     df = df.drop('transaction', axis=1)
     grous = df.groupby('journey_id')
     x = []
     y = []
 
-    for i in data['journey_id'].unique():
+    for i in df['journey_id'].unique():
         x1 = grous.get_group(i)
 
         x1 = x1.drop(['journey_id'], axis=1)
         x1 = x1.values.tolist()
 
-        y1 = df_transaction.loc[grous.get_group(i).index]
-        y1 = y1.values.tolist()
+        y_prop = df_transaction.loc[grous.get_group(i).index]
+        y_prop = y_prop.values.tolist()
+
+        y1 = []
+        for l in range(len(y_prop)):
+            y1.append([y_prop[l]])
 
         for j in range(max_journ_len - len(x1)):
-            # for-loop for data padding (all customer journeys filled with zeros to get same length)
             x1.append([0] * 52)  # 52 is number of columns without journey_id an transaction
-            y1.append(0)
+            y1.append([0])
         x.append(x1)
         y.append(y1)
 
@@ -68,6 +71,6 @@ def mta2tensor(df):  # function that transforms dataset to tensor
 
 data = pd.read_csv("data_sample1.csv")
 max_journ_len = 16
+data = data[data['journey_id'] < 2000]  # Just for now to have less calculation (smaller df)
 data = prep_df(data, max_journ_len)
 x_train, y_train = mta2tensor(data)
-
