@@ -133,7 +133,7 @@ class phased_GRUCell(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
             dropout=0.0,
             recurrent_dropout=0.0,
             reset_after=True,
-            time_gate=True,
+            time_gate=False,
             **kwargs,
     ):
         if units <= 0:
