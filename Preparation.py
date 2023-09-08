@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 from numpy import random
-from sklearn.preprocessing import OrdinalEncoder
+#from sklearn.preprocessing import OrdinalEncoder
 
 
 def prep_data():
@@ -29,16 +29,6 @@ def prep_data():
     df = df.sort_values('timestamp')
     df = df.sort_values('journey_id')
 
-    # This transform df so that only last touchpoint before conversion gets transaction = 1. Because this leaves to few
-    # observations with transaction == 1 we don't consider it for now
-
-    # groups = df.groupby('journey_id').time_diff
-    # min_val = groups.transform(min) #search minimal time_diff in each group <=> closest tp to conversion
-
-    # cond1 = df.time_diff==min_val #define condition when transaction should be 1
-
-    # df['transaction'] = np.select([cond1], [1], default = 0) #transform transaction
-
     # Long Journeys
 
     max_journ_len = 16
@@ -50,19 +40,11 @@ def prep_data():
     df = pd.get_dummies(df, columns=['country_name'], prefix='country', prefix_sep='_', dtype=float)
     df = pd.get_dummies(df, columns=['platform'], prefix='platform', prefix_sep='_', dtype=float)
 
-    # Ordinal Encoder, not really accurate, but doesn't blow up df
-
-    # ordinal_encoder = OrdinalEncoder()
-    # for column in df.columns:
-    #    if df[column].dtypes == 'object':
-    #        df[column] = ordinal_encoder.fit_transform(df[[column]])
 
     # Remove irrelevant columns
-
     df = df.drop(['s', 'timestamp_conversion', 'time_diff'], axis=1)  # cant be used for prediction
 
     # Put timestamp at the last position in the data set
-
     df.insert(len(df.columns)-1, 'timestamp', df.pop('timestamp'))
 
     return df, df.columns

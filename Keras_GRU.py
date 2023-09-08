@@ -97,10 +97,6 @@ class phased_GRUCell(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
         `recurrent_kernel` weights matrix. Default: `None`.
       bias_constraint: Constraint function applied to the bias vector. Default:
         `None`.
-      dropout: Float between 0 and 1. Fraction of the units to drop for the
-        linear transformation of the inputs. Default: 0.
-      recurrent_dropout: Float between 0 and 1. Fraction of the units to drop
-        for the linear transformation of the recurrent state. Default: 0.
       reset_after: GRU convention (whether to apply reset gate after or
         before matrix multiplication). False = "before",
         True = "after" (default and cuDNN compatible).
@@ -134,6 +130,7 @@ class phased_GRUCell(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
             recurrent_dropout=0.0,
             reset_after=True,
             time_gate=False,
+            last_layer=False,
             **kwargs,
     ):
         if units <= 0:
@@ -175,6 +172,7 @@ class phased_GRUCell(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
         self.state_size = self.units
         self.output_size = self.units
         self.time_gate = time_gate
+        self.last_layer = last_layer
 
     def build(self, input_shape):
         super().build(input_shape)
@@ -207,6 +205,7 @@ class phased_GRUCell(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
         if self.use_bias:
             if not self.reset_after:
                 if self.time_gate:
+                    # adds the needded weights here
                     bias_shape = (4 * self.units + 3,)
                 else:
                     bias_shape = (3 * self.units,)
@@ -243,10 +242,6 @@ class phased_GRUCell(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
         if self.time_gate:
             inputs = inputs[:, :-1]
             time = inputs[:, -1:]
-
-            #logging.warning('time(:,0) : {}, timeshape: {}'.format(time[:,0], time.shape))
-
-        print(inputs)
 
         if self.use_bias:
             if not self.reset_after:
@@ -298,13 +293,18 @@ class phased_GRUCell(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
         # new #####################################################
         # time_gate
         if self.time_gate:
-            tau = input_bias[self.units * 3: self.units * 4] + 10
-            s = input_bias[self.units * 4: self.units * 4 + 1] + 3000
-            ron = input_bias[self.units * 4 + 1: self.units * 4 + 2] + 0.8
-            alpha = input_bias[self.units * 4 + 2: self.units * 4 + 3] + 0.5
+            tau = input_bias[self.units * 3: self.units * 4] + 200
+            s = input_bias[self.units * 4: self.units * 4 + 1] + 3700
+            ron = input_bias[self.units * 4 + 1: self.units * 4 + 2] + 0.5
+            alpha = input_bias[self.units * 4 + 2: self.units * 4 + 3] + 1
             phi = phi_fast(time, s, tau)
             k = time_gate_fast(phi, ron, alpha)
             h = tf.math.multiply(k, h) + (1 - k) * h_tm1
 
+        #state does not contain the time
         new_state = [h] if tf.nest.is_nested(states) else h
+
+        if self.time_gate and not self.last_layer:
+            tf.concat([h, time], 1)  # passes the time to the next layer <-> also needs time_gate=True
+
         return h, new_state
