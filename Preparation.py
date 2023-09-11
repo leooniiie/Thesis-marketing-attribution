@@ -10,11 +10,11 @@ from numpy import random
 
 def prep_data():
     random.seed(246)
-    df_train = pd.read_csv("smaller_train.csv")
-    df_valid = pd.read_csv("smaller_valid.csv")
-    df_test = pd.read_csv("smaller_test.csv")
+    df = pd.read_csv("data_sample1.csv")
+    #df_valid = pd.read_csv("smaller_valid.csv")
+    #df_test = pd.read_csv("smaller_test.csv")
 
-    df = pd.concat([df_train, df_valid, df_test], ignore_index=True)
+    #df = pd.concat([df_train, df_valid, df_test], ignore_index=True)
 
     # df_valid = pd.read_csv("data_sample1.csv")
     # df_test = pd.read_csv("data_sample2.csv")
@@ -40,7 +40,6 @@ def prep_data():
     df = pd.get_dummies(df, columns=['country_name'], prefix='country', prefix_sep='_', dtype=float)
     df = pd.get_dummies(df, columns=['platform'], prefix='platform', prefix_sep='_', dtype=float)
 
-
     # Remove irrelevant columns
     df = df.drop(['s', 'timestamp_conversion', 'time_diff'], axis=1)  # cant be used for prediction
 
@@ -50,28 +49,25 @@ def prep_data():
     return df, df.columns
 
 
+
 def mta2tensor(df, max_journ_len):
-    colx = df.shape[1] - 2
     df_transaction = df['transaction']
     df = df.drop('transaction', axis=1)
-    grous = df.groupby('journey_id')
+
     x = []
     y = []
-    cj_count = 1
-    for i in df['journey_id'].unique():
-        x1 = grous.get_group(i)
-        x1 = x1.drop(['journey_id'], axis=1)
-        x1 = x1.values.tolist()
-        y_prop = df_transaction.loc[grous.get_group(i).index]
-        y_prop = y_prop.values.tolist()
-        if y_prop[0] == 1:
-            y1 = 1
-        else:
-            y1 = 0
-        for j in range(max_journ_len - len(x1)):
-            x1.append([0] * colx)
+
+    grouped = df.groupby('journey_id')
+    for group_id, group_data in grouped:
+        x1 = group_data.drop(['journey_id'], axis=1).values
+        y_prop = df_transaction.loc[group_data.index].values
+
+        y1 = 1 if y_prop[0] == 1 else 0
+        padding = max_journ_len - len(x1)
+        if padding > 0:
+            x1 = np.pad(x1, ((0, padding), (0, 0)), 'constant')
+
         x.append(x1)
         y.append(y1)
-        cj_count = cj_count + 1
 
     return x, y
