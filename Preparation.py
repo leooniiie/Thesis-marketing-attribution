@@ -10,16 +10,12 @@ from numpy import random
 
 def prep_data():
     random.seed(246)
-    df = pd.read_csv("data_sample1.csv")
-    #df_valid = pd.read_csv("smaller_valid.csv")
-    #df_test = pd.read_csv("smaller_test.csv")
+    # df = pd.read_csv("data_sample1.csv")
+    df_train = pd.read_csv("smaller_train.csv")
+    df_valid = pd.read_csv("smaller_valid.csv")
+    df_test = pd.read_csv("smaller_test.csv")
 
-    #df = pd.concat([df_train, df_valid, df_test], ignore_index=True)
-
-    # df_valid = pd.read_csv("data_sample1.csv")
-    # df_test = pd.read_csv("data_sample2.csv")
-
-    # df = pd.concat([df_test, df_valid], ignore_index=True)
+    df = pd.concat([df_train, df_test, df_valid], ignore_index=True)
 
     df['time_diff'] = df['timestamp_conversion'] - df['timestamp']  # create new var for timedifference
     # All observations where there's a touchpoint after conversion... 34 rows will be ignored
@@ -44,10 +40,9 @@ def prep_data():
     df = df.drop(['s', 'timestamp_conversion', 'time_diff'], axis=1)  # cant be used for prediction
 
     # Put timestamp at the last position in the data set
-    df.insert(len(df.columns)-1, 'timestamp', df.pop('timestamp'))
+    df.insert(len(df.columns) - 1, 'timestamp', df.pop('timestamp'))
 
     return df, df.columns
-
 
 
 def mta2tensor(df, max_journ_len):
